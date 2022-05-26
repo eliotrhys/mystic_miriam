@@ -1,7 +1,15 @@
 const { google } = require('googleapis');
+const { Configuration, OpenAIApi } = require("openai");
 
 const util = require('util');
 const fs = require('fs');
+
+
+const configuration = new Configuration({
+  apiKey: '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',
+});
+
+const openai = new OpenAIApi(configuration);
 
 let liveChatId; // Where we'll store the id of our liveChat
 let nextPage; // How we'll keep track of pagination for chat messages
@@ -95,13 +103,17 @@ const checkTokens = async () => {
 // Check tokens as soon as server is started
 checkTokens();
 
+// THIS HAS MAX RESULTS AND IT SHOULDNT BEOLOW
+
 youtubeService.findActiveChat = async () => {
     const response = await youtube.liveBroadcasts.list({
         auth,
         part: 'snippet',
         mine: 'true',
+        maxResults: 100,
     });
-    const latestChat = response.data.items[0];
+    // console.log(response.data.items);
+    const latestChat = response.data.items[response.data.items.length - 1];
     liveChatId = latestChat.snippet.liveChatId;
     console.log('Chat ID Found:', liveChatId)
 };
@@ -138,6 +150,36 @@ youtubeService.getLastChat = () => {
     let lastChat = chatMessages.pop();
     console.log(lastChat);
     console.log(lastChat.snippet.displayMessage + " is the last chat that has been sent");
+    return lastChat.snippet.displayMessage;
+}
+
+youtubeService.tellFortune = async () => {
+    try 
+    {
+        let lastChat = chatMessages.pop();
+        let fortuneQuestion = lastChat.snippet.displayMessage;
+        console.log(fortuneQuestion + " will be told as a fortune");
+
+        const completion = await openai.createCompletion("text-davinci-002", {
+            prompt: `Use 10 adjectives as you answer this question: ${fortuneQuestion}`,
+            max_tokens: 100,
+            temperature: 0.6,
+            suffix: "That alright, ya filthy animal?",
+        });
+
+        console.log("GOT PAST THE GPT-3 THINGY!")
+        // console.log(response);
+        console.log(completion.data.choices[0].text);
+
+        // console.log(data.result + " THIS WAS CREATED ENTIRELY BY THE AI AND NOT ELIOT");
+
+    } catch(error) 
+    {
+        console.log("ERROR ON THE PRAIRIE")
+        console.log(error);
+        return error;
+    }
+    
 }
 
 module.exports = youtubeService;

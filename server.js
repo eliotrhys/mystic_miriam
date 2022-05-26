@@ -40,6 +40,10 @@ server.get('/get-last-chat', (req, res) => {
     res.redirect('/');
 });
 
+server.get('/tell-fortune', (req, res) => {
+    youtubeService.tellFortune();
+    res.redirect('/');
+});
 
 server.listen(3000, function() {
     console.log('Server is Ready');
