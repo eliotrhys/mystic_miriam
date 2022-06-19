@@ -9,15 +9,15 @@ server.get('/', (req, res) =>
   res.sendFile(path.join(__dirname + '/index.html'))
 );
 
-server.get('/authorize', (request, response) => {
+server.get('/authorize', (req, res) => {
   console.log('/auth');
-  youtubeService.getCode(response);
+  youtubeService.getCode(res);
 });
 
-server.get('/callback', (req, response) => {
+server.get('/callback', (req, res) => {
   const { code } = req.query;
   youtubeService.getTokensWithCode(code);
-  response.redirect('/');
+  res.redirect('/');
 });
 
 server.get('/find-active-chat', (req, res) => {
@@ -41,10 +41,12 @@ server.get('/get-last-chat', (req, res) => {
 });
 
 server.get('/tell-fortune', (req, res) => {
-    youtubeService.tellFortune();
+    var result = youtubeService.tellFortune();
+    console.log(result);
+    res.send(result);
     res.redirect('/');
 });
 
 server.listen(3000, function() {
-    console.log('Server is Ready');
+    console.log('THE SERVER IS READY MATE');
 });
