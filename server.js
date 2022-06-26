@@ -1,4 +1,5 @@
 const express = require('express');
+const { youtube } = require('googleapis/build/src/apis/youtube/index.js');
 const path = require('path');
 
 const youtubeService = require('./youtubeService.js');
@@ -41,11 +42,18 @@ server.get('/get-last-chat', (req, res) => {
 });
 
 server.get('/tell-fortune', (req, res) => {
-    var result = youtubeService.tellFortune();
-    console.log(result);
-    res.send(result);
-    res.redirect('/');
+  youtubeService.tellFortune()
+  .then(function(result){
+    console.log(result + " IS THE RESULT");
+    res.end(result);
+  });
 });
+
+// server.get('/tell-fortune', youtubeService.tellFortune, (req, res) => {
+//   var result = youtubeService.tellFortune();
+//   console.log(result);
+//   res.send(result);
+// });
 
 server.listen(3000, function() {
     console.log('THE SERVER IS READY MATE');

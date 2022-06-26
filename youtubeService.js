@@ -4,17 +4,19 @@ const { Configuration, OpenAIApi } = require("openai");
 const util = require('util');
 const fs = require('fs');
 
+const nodeServer = require('./server.js');
+
 const configuration = new Configuration({
   apiKey: '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',
 });
 
 const openai = new OpenAIApi(configuration);
 
+const express = require('express');
+const server = express();
+
 // HARDCODED
-let liveChatId = "KicKGFVDcHlBclcySzZRQU9sYzVuZERkdjdRURILQnhzSG1rczRRdGs"; // Where we'll store the id of our liveChat
-
-
-
+let liveChatId = "KicKGFVDcHlBclcySzZRQU9sYzVuZERkdjdRURILc2IwbHJEbWp3ak0"; // Where we'll store the id of our liveChat
 
 let nextPage; // How we'll keep track of pagination for chat messages
 const intervalTime = 5000; // Miliseconds between requests to check chat messages
@@ -25,8 +27,8 @@ let chatMessages = []; // where we'll store all messages
 const fetch = require('node-fetch-commonjs');
 const miriamVoiceId = "038ca4b3-efed-4e86-91f3-868d6cf2a177";
 const apiToken = "dx_bearer_8f49f49a-5a83-412e-a050-3bc31aa41040:dx_secret_d0bf6cef-4be7-4d2f-ac04-1fa529d88610";
-let newTextId;
-let finalText;
+let descriptResponseId;
+let finalAudioLink;
 
 const writeFilePromise = util.promisify(fs.writeFile);
 const readFilePromise = util.promisify(fs.readFile);
@@ -166,58 +168,63 @@ youtubeService.getLastChat = () => {
 }
 
 youtubeService.tellFortune = async () => {
-    try 
-    {
-      console.log("HIT THE TELL FORTUNE METHOD");
-      console.log(chatMessages);
-        let lastChat = chatMessages.pop();
-        let fortuneQuestion = lastChat.snippet.displayMessage;
-        console.log(fortuneQuestion + " will be told as a fortune");
+  try 
+  {
+    console.log("PROGRESS: HIT THE TELL FORTUNE METHOD");
 
-        const completion = await openai.createCompletion("text-davinci-002", {
-            prompt: `Use 10 adjectives as you answer this question: ${fortuneQuestion}`,
-            max_tokens: 100,
-            temperature: 0.6,
-            suffix: "That alright, ya filthy animal?",
-        });
+    // GET THE LAST CHAT MESSAGE FROM THE YOUTUBE CHAT BOX
+    let lastChatMessage = chatMessages.pop();
 
-        console.log("GOT PAST THE GPT-3 THINGY!")
-        // console.log(response);
-        
-        let miriamText = completion.data.choices[0].text;
-        let finalText = miriamText.replace(/(\r\n|\n|\r)/gm, "");
+    // CREATE THE FORTUNE QUESTION VARIABLE
+    let fortuneQuestion = lastChatMessage.snippet.displayMessage;
+    console.log("PROGRESS: " + fortuneQuestion + " WILL BE TOLD AS A FORTUNE");
 
-        console.log(finalText + " IS THE GENERATED TEXT");
+    // GPT-3 QUESTION COMPLETION STARTS
+    const completion = await openai.createCompletion("text-davinci-002", {
+        prompt: `Use 10 adjectives as you answer this question: ${fortuneQuestion}`,
+        max_tokens: 100,
+        temperature: 0.6,
+        suffix: "That alright, ya filthy animal?",
+    });
 
-        // START OF AUDIO GENERATION
+    // GPT-3 QUESTION COMPLETION ENDS - GET FULL RESPONSE TEXT
+    console.log("PROGRESS: GPT-3 RESPONSE COMPLETE")
+    let initialGPTResponseText = completion.data.choices[0].text;
 
-        // run the request. this function will call itself max. 5 times if the request fails
-        getAudioLink(finalText, 5, callback);
 
-    } catch(error) 
-    {
-        console.log("ERROR ON THE PRAIRIE")
-        console.log(error);
-        return error;
-    }
+    // REMOVE LINE BREAKS FROM GPT-£ REPONSE
+    let finalGPTResponseText = initialGPTResponseText.replace(/(\r\n|\n|\r)/gm, "");
+    console.log("PROGRESS: " + finalGPTResponseText + " IS THE FINAL GPT RESPONSE TEXT");
+
+
+    // START OF AUDIO GENERATION
+    // RUN GET AUDIO LINK REQUEST. THIS FUNCTION WILL CALL ITSELF 5 TIMES IF THE REQUEST FAILS 
+    getAudioLink(finalGPTResponseText, 5, callback);
+    // return getAudioLink(finalGPTResponseText, 5, callback);
+      
+  } catch(error) 
+  {
+      console.log("ERROR ON THE PRAIRIE")
+      console.log(error);
+      return error;
+  }
 }
 
-const generateAudio = async (miriamText) => {
+const generateAudio = async (finalGPTResponseText) => {
   try {
-    console.log(miriamText);
     await fetch("https://descriptapi.com/v1/overdub/generate_async", {
-      body: `{"text": "${miriamText}","voice_id": "${miriamVoiceId}"}`,
+      body: `{"text": "${finalGPTResponseText}","voice_id": "${miriamVoiceId}"}`,
       headers: {
         Authorization: `Bearer ${apiToken}`,
         "Content-Type": "application/json"
       },
       method: "POST"
     })
-    .then(function(res) { console.log("hitting generate audio then"); return res.json() })
+    .then(function(res) { console.log("PROGRESS: HITTING .then() IN GENERATE AUDIO"); return res.json() })
     .then(function(json) { 
-      newTextId = json["id"];
-      console.log(newTextId + " IS THE NEW TEXT ID");
-      return newTextId;
+      descriptResponseId = json["id"];
+      console.log("PROGRESS: " + descriptResponseId + " IS THE DESCRIPT RENSPONSE ID");
+      // return descriptResponseId;
     })
   }
   catch(ex) 
@@ -230,7 +237,7 @@ const generateAudio = async (miriamText) => {
 
 var callback = (data, error) => {
 
-  console.log("HITTING CALLBACK() FUNCTION");
+  console.log("PROGRESS: HITTING callback() FUNCTION");
   // consume data
   setTimeout(function(){
     if (error) {
@@ -247,37 +254,32 @@ function delay(t, v) {
   });
 }
 
-const getAudioLink = async (miriamText, retries, callback) => {
+const getAudioLink = async (finalGPTResponseText, retries, callback) => {
   try {
       // generateAudio() works.
-      console.log("MIRIAM TEXT IN GETAUDIOLINK IS " + miriamText);
-      await generateAudio(miriamText);
+      console.log("PROGRESS: " + finalGPTResponseText + " IS THE FINAL GPT RESPONSE TEXT HEAING INTO generateAudio()");
+      await generateAudio(finalGPTResponseText);
 
-      setTimeout(function(){
-        console.log("PROGRESS: HITTING THE FETCH AGAIN");
-        const results = fetch(`https://descriptapi.com/v1/overdub/generate_async/${newTextId}`, {
+      let testVariable = setTimeout(function(){
+        console.log("PROGRESS: HITTING setTimeout FUNCTION TO GET LINK");
+        const results = fetch(`https://descriptapi.com/v1/overdub/generate_async/${descriptResponseId}`, {
           headers: {
             Authorization: `Bearer ${apiToken}`
           }
         }).then(function(res) { 
             return delay(20000).then(function() {
-              console.log("hitting getaudiolink then");
+              console.log("PROGRESS: WAITED 20 SECONDS FOR API CALL TO RETURN STATUS DONE");
               return res.json()});
         })
           .then(function(json) { 
             console.log("PROGRESS: JSON RETURNING");
-            console.log(json["state"] + " IS THE CURRENT STATE");
+            console.log("PROGRESS: " + json["state"] + " IS THE CURRENT STATE");
             if (json["state"] == "done")
             {
               console.log("PROGRESS: RESULTS ARE DONE AND " + json["state"] + " IS THE STATE");
-              finalText = json["url"];
-              console.log(finalText);
-
-
-              return finalText;
-            //   app.get('/', (req, res) => {
-            //     res.send(`${finalText}`);
-            //   });
+              finalAudioLink = json["url"];
+              console.log(finalAudioLink);
+              return finalAudioLink;
             }
             else {
                 // server not done yet
@@ -296,8 +298,11 @@ const getAudioLink = async (miriamText, retries, callback) => {
                 }
             }
           })
-        console.log(results);
-      }, 20000)
+          // console.log(results + " ARE THE RESULTS 1");
+          // return results;
+      }, 20000);
+      console.log("Returning..." + testVariable);
+      // return;
   } 
   catch(ex) 
   {
