@@ -18,7 +18,7 @@
     "googleapis": "^100.0.0",
     "node-fetch": "^2.6.7",
     "node-fetch-commonjs": "^3.1.1",
-    "openai": "^2.0.5",
+    "openai": "^3.0.0",
     "util": "^0.12.4"
   }
 }

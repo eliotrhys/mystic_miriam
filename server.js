@@ -41,19 +41,10 @@ server.get('/get-last-chat', (req, res) => {
     res.redirect('/');
 });
 
-server.get('/tell-fortune', (req, res) => {
-  youtubeService.tellFortune()
-  .then(function(result){
-    console.log(result + " IS THE RESULT");
-    res.end(result);
-  });
+server.get('/tell-fortune', async (req, res) => {
+  const result = await youtubeService.tellFortune();
+  res.send(result);
 });
-
-// server.get('/tell-fortune', youtubeService.tellFortune, (req, res) => {
-//   var result = youtubeService.tellFortune();
-//   console.log(result);
-//   res.send(result);
-// });
 
 server.listen(3000, function() {
     console.log('THE SERVER IS READY MATE');
